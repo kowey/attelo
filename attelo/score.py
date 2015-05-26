@@ -207,7 +207,7 @@ def build_confusion_matrix(dpack, predictions):
     # we want the confusion matrices to have the same shape regardless
     # of what labels happen to be used in the particular fold
     # pylint: disable=no-member
-    labels = numpy.arange(1, len(dpack.labels) + 1)
+    labels = numpy.arange(0, len(dpack.labels))
     # pylint: enable=no-member
     return confusion_matrix(dpack.target, pred_target, labels)
 
