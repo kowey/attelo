@@ -375,6 +375,8 @@ def _copy_version_files(hconf, test_data):
     for vpath in glob.glob(fp.join(hconf.eval_dir,
                                    'versions-*.txt')):
         shutil.copy(vpath, provenance_dir)
+    for cpath in hconf.config_files:
+        shutil.copy(cpath, provenance_dir)
 
 
 def _mk_report(hconf, dconf, slices, fold, test_data=False):

@@ -63,6 +63,17 @@ class Parser(with_metaclass(ABCMeta, object)):
         return dpack.set_graph(graph)
 
     @staticmethod
+    def select(dpack, idxes):
+        """ Mark any pairs except the ones indicated as unrelated
+
+        See Also
+        --------
+        `Parser.deselect`"""
+        unwanted_idxes = np.ones_like(dpack.graph.attach, dtype=bool)
+        unwanted_idxes[idxes] = False
+        return Parser.deselect(dpack, unwanted_idxes)
+
+    @staticmethod
     def deselect(dpack, idxes):
         """
         Common parsing pattern: mark all edges at the given indices

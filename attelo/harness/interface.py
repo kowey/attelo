@@ -127,6 +127,21 @@ class Harness(with_metaclass(ABCMeta, object)):
 
     # pylint: disable=no-self-use
     @property
+    def config_files(self):
+        """Files needed to reproduce the configuration behind a
+        particular set of scores.
+
+        Will be copied into the provenance section of the report.
+
+        Some harnesses have parameter files that should be saved
+        in case there is any need to reproduce results much
+        futher into the future. Specifying them here gives you some
+        extra insurance in case you neglect to put them under version
+        control.
+        """
+        return []
+
+    @property
     def detailed_evaluations(self):
         """
         Set of evaluations for which we would like detailed reporting
