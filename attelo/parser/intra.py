@@ -14,8 +14,7 @@ from attelo.edu import (FAKE_ROOT_ID)
 from attelo.table import (DataPack,
                           Graph,
                           UNRELATED,
-                          locate_in_subpacks,
-                          select_intrasentential)
+                          locate_in_subpacks)
 from .interface import (Parser)
 
 # pylint: disable=too-few-public-methods
@@ -58,7 +57,7 @@ def for_intra(dpack, target):
     dpack: DataPack
     target: array(int)
     """
-    dpack = select_intrasentential(dpack, include_fake_root=True)
+    # pack = _select_intrasentential(pack)
 
     # find all edus that have intra incoming edges (to rule out)
     unrelated = dpack.label_number(UNRELATED)
