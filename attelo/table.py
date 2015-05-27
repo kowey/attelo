@@ -441,54 +441,42 @@ def for_labelling(dpack, target):
     return dpack, target
 
 
-def select_fakeroot(dpack):
+def idxes_fakeroot(dpack):
+    """Return datapack indices only the pairings which involve the
+    fakeroot node
     """
-    Retain only the pairings from a datapack which involve
-    the fakeroot node
-    """
-    retain = []
-    for i, (edu1, _) in enumerate(dpack.pairings):
-        if edu1.id == FAKE_ROOT_ID:
-            retain.append(i)
-    return dpack.selected(retain)
+    return [i for i, (edu1, _) in enumerate(dpack.pairings)
+            if edu1.id == FAKE_ROOT_ID]
 
 
-def select_intrasentential(dpack, include_fake_root=False):
-    """
-    Retain only the pairings from a datapack which correspond to
+def idxes_intra(dpack, include_fake_root=False):
+    """Return datapack indices for pairings which correspond to
     EDUs in the same sentence (or the fake root).
-
-    Note that both `select_intrasentential` and
-    `select_intersentential` include the fake root EDUs
     """
-    retain = []
+    idxes = []
     for i, (edu1, edu2) in enumerate(dpack.pairings):
         if edu1.id == FAKE_ROOT_ID:
             if include_fake_root:
-                retain.append(i)
+                idxes.append(i)
         elif (edu1.grouping == edu2.grouping and
               edu1.subgrouping == edu2.subgrouping):
-            retain.append(i)
-    return dpack.selected(retain)
+            idxes.append(i)
+    return idxes
 
 
-def select_intersentential(dpack, include_fake_root=False):
-    """
-    Retain only the pairings from a datapack which correspond to
+def idxes_inter(dpack, include_fake_root=False):
+    """Return datapack indices for pairings which correspond to
     EDUs in different sentences (or the fake root).
-
-    Note that both `select_intrasentential` and
-    `select_intersentential` include the fake root EDUs
     """
-    retain = []
+    idxes = []
     for i, (edu1, edu2) in enumerate(dpack.pairings):
         if edu1.id == FAKE_ROOT_ID:
             if include_fake_root:
-                retain.append(i)
+                idxes.append(i)
         elif (edu1.grouping != edu2.grouping or
               edu1.subgrouping != edu2.subgrouping):
-            retain.append(i)
-    return dpack.selected(retain)
+            idxes.append(i)
+    return idxes
 
 
 class Multipack(dict):

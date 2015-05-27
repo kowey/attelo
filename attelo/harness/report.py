@@ -35,9 +35,9 @@ from attelo.score import (empty_confusion_matrix,
                           score_edus,
                           select_in_pack)
 from attelo.table import (DataPack,
-                          select_fakeroot,
-                          select_intersentential,
-                          select_intrasentential)
+                          idxes_fakeroot,
+                          idxes_inter,
+                          idxes_intra)
 from attelo.util import (Team)
 
 from .util import makedirs
@@ -394,9 +394,9 @@ def _mk_report(hconf, dconf, slices, fold, test_data=False):
     rdir = hconf.report_dir_path(test_data, fold)
     rpack.dump(rdir, header='whole')
 
-    partitions = [(1, 'intra', select_intrasentential),
-                  (2, 'inter', select_intersentential),
-                  (3, 'froot', select_fakeroot)]
+    partitions = [(1, 'intra', lambda d: d.selected(idxes_intra(d))),
+                  (2, 'inter', lambda d: d.selected(idxes_inter(d))),
+                  (3, 'froot', lambda d: d.selected(idxes_fakeroot(d)))]
     for i, header, adjust_pack in partitions:
         rpack = full_report(dconf.pack, dconf.folds, slices_[i],
                             adjust_pack=adjust_pack)
