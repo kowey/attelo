@@ -295,9 +295,6 @@ def _mk_model_summary(hconf, dconf, rconf, test_data, fold):
     "generate summary of best model features"
     _top_n = 3
 
-    if not isinstance(rconf, IntraInterPair):
-        rconf = IntraInterPair(intra=rconf, inter=rconf)
-
     def _write_discr(discr, subconf, intra):
         "write discriminating features to disk"
         if discr is None:
@@ -321,6 +318,10 @@ def _mk_model_summary(hconf, dconf, rconf, test_data, fold):
     models = Team(attach=mpaths['attach'],
                   label=mpaths['label']).fmap(load_model)
     discr = discriminating_features(models, labels, vocab, _top_n)
+
+    if not isinstance(rconf, IntraInterPair):
+        rconf = IntraInterPair(intra=rconf, inter=rconf)
+
     _write_discr(discr, rconf.inter, False)
 
     # sentence-level

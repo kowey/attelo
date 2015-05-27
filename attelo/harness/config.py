@@ -40,14 +40,6 @@ class LearnerConfig(Team):
         return team
 
 
-class ParserConfig(namedtuple('ParserConfig',
-                              ['key', 'decoder', 'payload', 'settings'])):
-    """
-    A decoder and some decoder settings that together with it
-    """
-    pass
-
-
 class EvaluationConfig(namedtuple("EvaluationConfig",
                                   "key settings learner parser")):
     """
