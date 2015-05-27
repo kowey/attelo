@@ -64,7 +64,6 @@ class Graph(namedtuple('Graph',
                      attach=self.attach[indices],
                      label=self.label[indices])
 
-
     @classmethod
     def vstack(cls, graphs):
         '''
@@ -72,7 +71,7 @@ class Graph(namedtuple('Graph',
         '''
         if not graphs:
             raise ValueError('need non-empty list of graphs')
-        graphs = list(graphs) # handle generater exp
+        graphs = list(graphs)  # handle generater exp
         gzero = graphs[0]
         if gzero is None:
             return None
