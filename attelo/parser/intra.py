@@ -14,6 +14,7 @@ from attelo.edu import (FAKE_ROOT_ID)
 from attelo.table import (DataPack,
                           Graph,
                           UNRELATED,
+                          idxes_intra,
                           locate_in_subpacks)
 from .interface import (Parser)
 
@@ -57,8 +58,6 @@ def for_intra(dpack, target):
     dpack: DataPack
     target: array(int)
     """
-    # pack = _select_intrasentential(pack)
-
     # find all edus that have intra incoming edges (to rule out)
     unrelated = dpack.label_number(UNRELATED)
     intra_tgts = defaultdict(set)
@@ -183,9 +182,18 @@ class IntraInterParser(with_metaclass(ABCMeta, Parser)):
             return IntraInterPair(intra=intra_cache,
                                   inter=inter_cache)
 
+    @staticmethod
+    def _for_intra_fit(dpack, target):
+        """Adapt a datapack for intrasentential learning"""
+        idxes = idxes_intra(dpack, include_fake_root=True)
+        dpack = dpack.selected(idxes)
+        target = target[idxes]
+        return for_intra(dpack, target)
+
     def fit(self, dpacks, targets, cache=None):
         caches = self._split_cache(cache)
-        dpacks_intra, targets_intra = self.dzip(for_intra, dpacks, targets)
+        dpacks_intra, targets_intra = self.dzip(self._for_intra_fit,
+                                                dpacks, targets)
         self._parsers.intra.fit(dpacks_intra, targets_intra,
                                 cache=caches.intra)
         self._parsers.inter.fit(dpacks, targets, cache=caches.inter)
