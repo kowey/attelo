@@ -231,6 +231,7 @@ def full_report(mpack, fold_dict, slices,
             fpack = DataPack.vstack([adjust_pack(x)
                                      for x in mpack.values()])
             is_first_slice = False
+            num_edges[None] = len(fpack)
         elif is_first_slice or slc.fold != fold:
             f_mpack = select_testing(mpack, fold_dict, slc.fold)
             fpack = DataPack.vstack([adjust_pack(x)
