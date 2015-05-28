@@ -312,6 +312,8 @@ class HeadToHeadParser(IntraInterParser):
         "join sentences by parsing their heads"
         dpack_inter = self._select_heads(dpack, spacks)
         has_inter = len(dpack_inter) > 0
+        if has_inter:
+            dpack_inter = self._parsers.inter.transform(dpack_inter)
         doc_lbl = self._mk_get_lbl(dpack, [dpack_inter])
         sent_lbl = self._mk_get_lbl(dpack, spacks)
         unrelated_lbl = dpack.label_number(UNRELATED)
