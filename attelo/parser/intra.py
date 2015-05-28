@@ -14,6 +14,7 @@ from attelo.edu import (FAKE_ROOT_ID)
 from attelo.table import (DataPack,
                           Graph,
                           UNRELATED,
+                          idxes_inter,
                           idxes_intra,
                           locate_in_subpacks)
 from .interface import (Parser)
@@ -173,12 +174,12 @@ class IntraInterParser(with_metaclass(ABCMeta, Parser)):
         else:
             intra_cache = {}
             inter_cache = {}
-            pref_len = len('intra:')
+            pref_len = len('intra:')  # same for 'inter:'
             for key in cache:
                 if key.startswith('intra:'):
                     intra_cache[key[pref_len:]] = cache[key]
-                else:
-                    inter_cache[key] = cache[key]
+                elif key.startswith('inter:'):
+                    inter_cache[key[pref_len:]] = cache[key]
             return IntraInterPair(intra=intra_cache,
                                   inter=inter_cache)
 
@@ -190,13 +191,24 @@ class IntraInterParser(with_metaclass(ABCMeta, Parser)):
         target = target[idxes]
         return for_intra(dpack, target)
 
+    @staticmethod
+    def _for_inter_fit(dpack, target):
+        """Adapt a datapack for intersentential learning"""
+        idxes = idxes_inter(dpack, include_fake_root=True)
+        dpack = dpack.selected(idxes)
+        target = target[idxes]
+        return dpack, target
+
     def fit(self, dpacks, targets, cache=None):
         caches = self._split_cache(cache)
         dpacks_intra, targets_intra = self.dzip(self._for_intra_fit,
                                                 dpacks, targets)
+        dpacks_inter, targets_inter = self.dzip(self._for_inter_fit,
+                                                dpacks, targets)
         self._parsers.intra.fit(dpacks_intra, targets_intra,
                                 cache=caches.intra)
-        self._parsers.inter.fit(dpacks, targets, cache=caches.inter)
+        self._parsers.inter.fit(dpacks_inter, targets_inter,
+                                cache=caches.inter)
         return self
 
     def transform(self, dpack):
@@ -299,17 +311,14 @@ class HeadToHeadParser(IntraInterParser):
     def _recombine(self, dpack, spacks):
         "join sentences by parsing their heads"
         dpack_inter = self._select_heads(dpack, spacks)
-        if len(dpack_inter) > 0:
-            dpack_inter = self._parsers.inter.transform(dpack_inter)
-            doc_lbl = self._mk_get_lbl(dpack, [dpack_inter])
-        else:
-            doc_lbl = lambda _: None
+        has_inter = len(dpack_inter) > 0
+        doc_lbl = self._mk_get_lbl(dpack, [dpack_inter])
         sent_lbl = self._mk_get_lbl(dpack, spacks)
         unrelated_lbl = dpack.label_number(UNRELATED)
 
         def merged_lbl(i):
             'doc label where relevant else sentence label'
-            lbl = doc_lbl(i)
+            lbl = doc_lbl(i) if has_inter else None
             if lbl is None:
                 lbl = sent_lbl(i)
             # may have fallen through the cracks (ie. may be neither in

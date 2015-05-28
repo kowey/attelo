@@ -49,15 +49,22 @@ class ReportPack(namedtuple('ReportPack',
                              'edge_by_label',
                              'edu',
                              'confusion',
-                             'confusion_labels'])):
+                             'confusion_labels',
+                             'num_edges'])):
     """
     Collection of reports of various sorts
 
     Missing reports can be set to None (but confusion_labels
     should be set if confusion is set)
 
-    :type edge_by_label: dict(string, CombinedReport)
-    :type confusion: dict(string, array)
+    Parameters
+    ----------
+    edge_by_label: dict(string, CombinedReport)
+
+    confusion: dict(string, array)
+
+    num_edges: int
+        Number of edges in the combined pack
     """
 
     def _filenames(self, output_dir):
@@ -107,15 +114,27 @@ class ReportPack(namedtuple('ReportPack',
         """
         Append reports to a pre-existing output directory
 
-        :param header: optional name for the tables
-        :type header: string or None
+        Parameters
+        ----------
+        header: string or None
+            name for the tables
+
+        hint: string or None
+            additional header text to display
         """
+        longheader = header + ' ({} edges)'.format(self.num_edges)
         fnames = self._filenames(output_dir)
         if self.edge is not None:
             # edgewise scores
             with open(fnames['edge'], 'a') as ostream:
-                print(self.edge.table(main_header=header), file=ostream)
-                print(file=ostream)
+                block = [
+                    longheader,
+                    '=' * len(longheader),
+                    '',
+                    self.edge.table(),
+                    ''
+                ]
+                print('\n'.join(block), file=ostream)
 
         if self.edu is not None:
             # edu scores
@@ -206,6 +225,7 @@ def full_report(mpack, fold_dict, slices,
     adjust_pack = adjust_pack or (lambda x: x)
     adjust_predictions = select_in_pack if adjust_pack else (lambda _, x: x)
 
+    num_edges = {}
     for slc in slices:
         if is_first_slice and slc.fold is None:
             fpack = DataPack.vstack([adjust_pack(x)
@@ -216,6 +236,7 @@ def full_report(mpack, fold_dict, slices,
             fpack = DataPack.vstack([adjust_pack(x)
                                      for x in f_mpack.values()])
             fold = slc.fold
+            num_edges[fold] = len(fpack)
             is_first_slice = False
         key = slc.configuration
         # accumulate scores
@@ -243,7 +264,8 @@ def full_report(mpack, fold_dict, slices,
                       edge_by_label=edge_by_label_report or None,
                       edu=CombinedReport(EduReport, edu_reports),
                       confusion=confusion,
-                      confusion_labels=dpack0.labels)
+                      confusion_labels=dpack0.labels,
+                      num_edges=sum(num_edges.values()))
 # pylint: enable=too-many-locals
 
 
@@ -281,13 +303,14 @@ def _fold_report_slices(hconf, fold):
                     enable_details=econf.key in dkeys)
 
 
-def _model_info_path(hconf, rconf, test_data, fold=None, intra=False):
+def _model_info_path(hconf, rconf, test_data, fold=None, grain=None):
     """
     Path to the model output file
     """
     template = "discr-features{grain}.{learner}.txt"
+    grain = '' if not grain else '-' + grain
     return fp.join(hconf.report_dir_path(test_data, fold=fold),
-                   template.format(grain='-sent' if intra else '',
+                   template.format(grain=grain,
                                    learner=rconf.key))
 
 
@@ -295,46 +318,46 @@ def _mk_model_summary(hconf, dconf, rconf, test_data, fold):
     "generate summary of best model features"
     _top_n = 3
 
-    def _write_discr(discr, subconf, intra):
-        "write discriminating features to disk"
+    def _extract_discr(mpaths):
+        "extract discriminating features"
+        dpack0 = dconf.pack.values()[0]
+        labels = dpack0.labels
+        vocab = dpack0.vocab
+        models = Team(attach=mpaths['attach'],
+                      label=mpaths['label']).fmap(load_model)
+        return discriminating_features(models, labels, vocab, _top_n)
+
+    def _write_discr(discr, subconf, grain):
+        "write discriminating features and write to disk"
         if discr is None:
             print(('No discriminating features for {name} {grain} model'
                    '').format(name=subconf.key,
-                              grain='sent' if intra else 'doc'),
+                              grain=grain),
                   file=sys.stderr)
             return
         output = _model_info_path(hconf, subconf, test_data,
                                   fold=fold,
-                                  intra=intra)
+                                  grain=grain)
         with codecs.open(output, 'wb', 'utf-8') as fout:
             print(show_discriminating_features(discr),
                   file=fout)
 
-    dpack0 = dconf.pack.values()[0]
-    labels = dpack0.labels
-    vocab = dpack0.vocab
-    mpaths = hconf.model_paths(rconf, fold)
-    # doc level discriminating features
-    models = Team(attach=mpaths['attach'],
-                  label=mpaths['label']).fmap(load_model)
-    discr = discriminating_features(models, labels, vocab, _top_n)
+    def _select(mpaths, prefix):
+        'return part of a model paths dictionary'
+        plen = len(prefix)
+        return dict((k[plen:], v) for k, v in mpaths.items()
+                    if k.startswith(prefix))
 
-    if not isinstance(rconf, IntraInterPair):
-        rconf = IntraInterPair(intra=rconf, inter=rconf)
-
-    _write_discr(discr, rconf.inter, False)
-
-    # sentence-level
-    if 'intra:attach' not in mpaths or 'intra:label' not in mpaths:
-        return
-    s_attach_path = mpaths['intra:attach']
-    s_label_path = mpaths['intra:label']
-    if not fp.exists(s_attach_path) or not fp.exists(s_label_path):
-        return
-    models = Team(attach=s_attach_path,
-                  label=s_label_path).fmap(load_model)
-    discr = discriminating_features(models, labels, vocab, _top_n)
-    _write_discr(discr, rconf.intra, True)
+    if isinstance(rconf, IntraInterPair):
+        mpaths = hconf.model_paths(rconf, fold)
+        discr = _extract_discr(_select(mpaths, 'inter:'))
+        _write_discr(discr, rconf.inter, 'doc')
+        discr = _extract_discr(_select(mpaths, 'intra:'))
+        _write_discr(discr, rconf.intra, 'sent')
+    else:
+        mpaths = hconf.model_paths(rconf, fold)
+        discr = _extract_discr(mpaths)
+        _write_discr(discr, rconf, 'whole')
 
 
 def _mk_hashfile(hconf, dconf, test_data):
