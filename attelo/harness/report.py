@@ -49,15 +49,22 @@ class ReportPack(namedtuple('ReportPack',
                              'edge_by_label',
                              'edu',
                              'confusion',
-                             'confusion_labels'])):
+                             'confusion_labels',
+                             'num_edges'])):
     """
     Collection of reports of various sorts
 
     Missing reports can be set to None (but confusion_labels
     should be set if confusion is set)
 
-    :type edge_by_label: dict(string, CombinedReport)
-    :type confusion: dict(string, array)
+    Parameters
+    ----------
+    edge_by_label: dict(string, CombinedReport)
+
+    confusion: dict(string, array)
+
+    num_edges: int
+        Number of edges in the combined pack
     """
 
     def _filenames(self, output_dir):
@@ -107,15 +114,27 @@ class ReportPack(namedtuple('ReportPack',
         """
         Append reports to a pre-existing output directory
 
-        :param header: optional name for the tables
-        :type header: string or None
+        Parameters
+        ----------
+        header: string or None
+            name for the tables
+
+        hint: string or None
+            additional header text to display
         """
+        longheader = header + ' ({} edges)'.format(self.num_edges)
         fnames = self._filenames(output_dir)
         if self.edge is not None:
             # edgewise scores
             with open(fnames['edge'], 'a') as ostream:
-                print(self.edge.table(main_header=header), file=ostream)
-                print(file=ostream)
+                block = [
+                    longheader,
+                    '=' * len(longheader),
+                    '',
+                    self.edge.table(),
+                    ''
+                ]
+                print('\n'.join(block), file=ostream)
 
         if self.edu is not None:
             # edu scores
@@ -206,6 +225,7 @@ def full_report(mpack, fold_dict, slices,
     adjust_pack = adjust_pack or (lambda x: x)
     adjust_predictions = select_in_pack if adjust_pack else (lambda _, x: x)
 
+    num_edges = {}
     for slc in slices:
         if is_first_slice and slc.fold is None:
             fpack = DataPack.vstack([adjust_pack(x)
@@ -216,6 +236,7 @@ def full_report(mpack, fold_dict, slices,
             fpack = DataPack.vstack([adjust_pack(x)
                                      for x in f_mpack.values()])
             fold = slc.fold
+            num_edges[fold] = len(fpack)
             is_first_slice = False
         key = slc.configuration
         # accumulate scores
@@ -243,7 +264,8 @@ def full_report(mpack, fold_dict, slices,
                       edge_by_label=edge_by_label_report or None,
                       edu=CombinedReport(EduReport, edu_reports),
                       confusion=confusion,
-                      confusion_labels=dpack0.labels)
+                      confusion_labels=dpack0.labels,
+                      num_edges=sum(num_edges.values()))
 # pylint: enable=too-many-locals
 
 
